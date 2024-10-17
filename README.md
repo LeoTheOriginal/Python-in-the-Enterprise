@@ -5,7 +5,7 @@ This repository contains the laboratory exercises and project work for the **Pyt
 ## Course Information
 
 - **Course Name:** Python in the Enterprise
-- **Cycle:** 2022/2023
+- **Cycle:** 2024/2025
 - **Level:** Bachelor's degree (1st level studies)
 - **Languages:** English
 
