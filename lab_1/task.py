@@ -30,6 +30,7 @@ class Car:
     def __init__(self):
         self.speed = 0
         self.wheel_angle = ''
+        self.running = True
 
     def act(self, event):
         if event == 'starting':
@@ -66,8 +67,11 @@ class Car:
         self.speed = 0
         self.wheel_angle = ''
         print("Car's speed: ", self.speed, "wheel angle: ", self.wheel_angle)
-
+        self.running = False
 
 car1 = Car()
-print(car1.speed)
-print(car1.wheel_angle)
+while True:
+    car1.act(input('Enter command: '))
+    if not car1.running:
+        break
+
