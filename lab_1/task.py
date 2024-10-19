@@ -6,6 +6,7 @@ class Car:
     def __init__(self):
         self.speed = 0
         self.wheel_angle = 0
+        self.simulator_running = True
         self.running = False
         self.on_the_road = False
         self.on_the_highway = False
@@ -33,13 +34,19 @@ class Car:
                 self.overtake()
             case 'truck':
                 self.truck()
+            case 'status':
+                self.status()
             case 'stop':
                 self.stop()
+            case 'exit':
+                self.exit()
+            case 'help':
+                print("Available commands: start the engine, drive, turn, accelerate, brake, obstacle, highway, "
+                      "exit highway, overtake, truck, status, stop, exit, help")
             case _:
                 print("Unknown command")
 
         self.events_handled += 1
-        self.status()
 
     def not_running(self):
         if not self.running:
@@ -50,6 +57,7 @@ class Car:
         if not self.on_the_road:
             print("Car is not on the road. Please enter a \"drive\" command first.")
         return not self.on_the_road
+
     def start_the_engine(self):
         if self.not_running():
             print("Starting the engine...")
@@ -67,6 +75,8 @@ class Car:
         if self.not_running():
             return
         print("Driving...")
+        time.sleep(1)
+        self.accelerate(5)
         time.sleep(1)
         print("Car is on the road.")
         self.on_the_road = True
@@ -94,13 +104,14 @@ class Car:
                     time.sleep(0.1)
                     print(f"Accelerating... Speed: {self.speed} km/h")
             else:
-                if self.speed < 100:
+                if self.speed < 50:
                     self.speed += 10
                     time.sleep(0.1)
                     print(f"Accelerating... Speed: {self.speed} km/h")
 
     def brake(self, duration=2):
-        if self.not_running():
+        if self.running is False or self.speed == 0:
+            print("Car is already stopped.")
             return
         for _ in range(duration):
             if self.speed > 0:
@@ -112,6 +123,9 @@ class Car:
 
     def avoid_obstacle(self):
         if self.not_running():
+            return
+        if self.speed == 0:
+            print("Car is already stopped.")
             return
         print("Obstacle detected. Avoiding the obstacle...")
         time.sleep(1)
@@ -154,6 +168,8 @@ class Car:
     def overtake(self):
         if self.not_running():
             return
+        if self.not_on_the_road():
+            return
         if self.on_the_highway:
             print("Overtaking... Speed set to 160 km/h.")
             self.speed = 160
@@ -164,7 +180,7 @@ class Car:
     def truck(self):
         if self.not_running():
             return
-        if not self.on_the_road:
+        if self.not_on_the_road():
             print("Car is not on the road. Please enter a \"drive\" command first.")
             return
         if self.on_the_highway:
@@ -175,16 +191,35 @@ class Car:
             print("Truck ahead! Slowing down to 50 km/h.")
 
     def status(self):
-        print("Car's current status: speed =", self.speed, ", wheel angle =", self.wheel_angle)
-
-    def event_status(self, event):
-        print(f"Event: {event} | Car's speed: {self.speed}, Wheel angle: {self.wheel_angle}")
+        print("Car's current status: speed =", self.speed, ", wheel angle =", self.wheel_angle, "°, Engine =", "running" if self.running else "not running")
+        if self.on_the_highway:
+            print("Car is on the highway.")
+        elif self.on_the_road:
+            print("Car is on the road.")
+        else:
+            print("Car is not on the road.")
 
     def stop(self):
-        self.speed = 0
-        self.wheel_angle = 0
+        if self.running is False:
+            print("Car is already stopped.")
+            return
+        if self.on_the_highway:
+            self.exit_highway()
+        print("Stopping the car...")
+        time.sleep(1)
         self.running = False
-        print("Car has stopped. Speed:", self.speed, "Wheel angle:", self.wheel_angle)
+        self.on_the_road = False
+        self.speed = 0
+        print("Car has stopped.")
+        time.sleep(1)
+
+    def exit(self):
+        print("Exiting the car simulation...")
+        time.sleep(1)
+        self.running = False
+        self.simulator_running = False
+        print("Car simulation ended.")
+        time.sleep(1)
 
 
 # Rozpoczęcie symulacji
@@ -195,7 +230,8 @@ time.sleep(1)
 
 # Główna pętla sterująca samochodem
 car1 = Car()
-while car1.running:
-    command = input("Enter a command: ").split()
+while car1.simulator_running:
+    command = input("Enter a command: ").strip().lower()
+    car1.act(command)
 
 print(f"Simulation ended after handling {car1.events_handled} events.")
