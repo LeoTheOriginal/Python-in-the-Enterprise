@@ -191,7 +191,8 @@ class Car:
             print("Truck ahead! Slowing down to 50 km/h.")
 
     def status(self):
-        print("Car's current status: speed =", self.speed, ", wheel angle =", self.wheel_angle, "°, Engine =", "running" if self.running else "not running")
+        print("Car's current status: speed =", self.speed, ", wheel angle =", self.wheel_angle, "°, Engine =",
+              "running" if self.running else "not running")
         if self.on_the_highway:
             print("Car is on the highway.")
         elif self.on_the_road:
