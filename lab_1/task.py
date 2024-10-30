@@ -1,238 +1,225 @@
 import time
 import random
+import logging
+import multiprocessing
 
 
-class Car:
-    def __init__(self):
-        self.speed = 0
-        self.wheel_angle = 0
-        self.simulator_running = True
-        self.running = False
-        self.on_the_road = False
-        self.on_the_highway = False
-        self.events_handled = 0
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
 
-    def act(self, event):
-        match event:
-            case 'start the engine':
-                self.start_the_engine()
-            case 'drive':
-                self.drive()
-            case 'turn':
-                self.turn()
-            case 'accelerate':
-                self.accelerate()
-            case 'brake':
-                self.brake()
-            case 'obstacle':
-                self.avoid_obstacle()
-            case 'highway':
-                self.highway()
-            case 'exit highway':
-                self.exit_highway()
-            case 'overtake':
-                self.overtake()
-            case 'truck':
-                self.truck()
-            case 'status':
-                self.status()
-            case 'stop':
-                self.stop()
-            case 'exit':
-                self.exit()
-            case 'help':
-                print("Available commands: start the engine, drive, turn, accelerate, brake, obstacle, highway, "
-                      "exit highway, overtake, truck, status, stop, exit, help")
-            case _:
-                print("Unknown command")
 
-        self.events_handled += 1
+class Action:
+    def __init__(self, name: str, duration: int = 0) -> None:
+        self.name = name
+        self.duration = duration
 
-    def not_running(self):
-        if not self.running:
-            print("Car's engine is not running. Please start the engine first.")
-        return not self.running
 
-    def not_on_the_road(self):
-        if not self.on_the_road:
-            print("Car is not on the road. Please enter a \"drive\" command first.")
-        return not self.on_the_road
+class Environment:
+    MAX_SPEED_HIGHWAY = 140
+    MAX_SPEED_ROAD = 50
+    OVERTAKE_SPEED_HIGHWAY = 160
+    OVERTAKE_SPEED_ROAD = 70
+    TRUCK_SPEED_HIGHWAY = 90
+    TRUCK_SPEED_ROAD = 50
 
-    def start_the_engine(self):
-        if self.not_running():
-            print("Starting the engine...")
-            time.sleep(1)
-            print("Engine started. Car is ready to drive.")
-            time.sleep(1)
-            print("Please enter a \"drive\" command to start driving.")
-            self.running = True
-        elif self.on_the_road or self.on_the_highway:
-            print("Engine is already running. You can continue driving.")
+    def __init__(self) -> None:
+        self.speed: int = 0
+        self.wheel_angle: int = 0
+        self.on_the_road: bool = False
+        self.on_the_highway: bool = False
+
+    def handle_action(self, action: Action) -> None:
+        if action.name == 'start the engine':
+            self.start_the_engine()
+        elif action.name == 'drive':
+            self.drive()
+        elif action.name == 'turn':
+            self.turn()
+        elif action.name == 'accelerate':
+            self.accelerate(action.duration if action.duration != 0 else 3)
+        elif action.name == 'brake':
+            self.brake(action.duration if action.duration != 0 else 2)
+        elif action.name == 'obstacle':
+            self.avoid_obstacle()
+        elif action.name == 'highway':
+            self.highway()
+        elif action.name == 'exit highway':
+            self.exit_highway()
+        elif action.name == 'overtake':
+            self.overtake()
+        elif action.name == 'truck':
+            self.truck()
+        elif action.name == 'status':
+            self.status()
+        elif action.name == 'stop':
+            self.stop()
         else:
-            print("Engine is already running. Please enter a \"drive\" command to start driving.")
+            self.log_message("Unknown action")
 
-    def drive(self):
-        if self.not_running():
-            return
-        print("Driving...")
+    @staticmethod
+    def log_message(message: str) -> None:
+        logging.info(message)
+
+    def start_the_engine(self=None) -> None:
+        self.log_message("Starting the engine...")
+        time.sleep(1)
+        self.log_message("Engine started. Car is ready to drive.")
+        time.sleep(1)
+        self.log_message("Please enter a 'drive' command to start driving.")
+
+    def drive(self) -> None:
+        self.log_message("Driving...")
+        self.on_the_road = True
         time.sleep(1)
         self.accelerate(5)
         time.sleep(1)
-        print("Car is on the road.")
-        self.on_the_road = True
+        self.log_message("Car is on the road.")
 
-    def turn(self):
-        if self.not_running():
-            return
-        angle = random.randint(-30, 30)
+    def turn(self) -> None:
+        angle = random.gauss(0, 15)  # mean=0, stddev=15
         for _ in range(3):
             self.wheel_angle = angle
             time.sleep(0.1)
-            print(f"Turning... Wheel angle: {self.wheel_angle}°")
+            self.log_message(f"Turning... Wheel angle: {self.wheel_angle}°")
             angle -= 7.50 if angle >= 0 else -7.50
-        self.wheel_angle = 0  # Reset to forward after the turn
+        self.wheel_angle = 0
 
-    def accelerate(self, duration=3):
-        if self.not_running():
-            return
-        if self.not_on_the_road():
-            return
-        for _ in range(duration):
-            if self.on_the_highway:
-                if self.speed < 140:  # Max speed
-                    self.speed += 10
-                    time.sleep(0.1)
-                    print(f"Accelerating... Speed: {self.speed} km/h")
-            else:
-                if self.speed < 50:
-                    self.speed += 10
-                    time.sleep(0.1)
-                    print(f"Accelerating... Speed: {self.speed} km/h")
+    def accelerate(self, duration: int = 3) -> None:
+        def accelerate_generator():
+            for _ in range(duration):
+                if self.on_the_highway:
+                    yield from self._increase_speed(self.MAX_SPEED_HIGHWAY)
+                else:
+                    yield from self._increase_speed(self.MAX_SPEED_ROAD)
 
-    def brake(self, duration=2):
-        if self.running is False or self.speed == 0:
-            print("Car is already stopped.")
-            return
-        for _ in range(duration):
-            if self.speed > 0:
-                self.speed -= 10
-            else:
-                self.speed = 0
-            time.sleep(0.1)
-            print(f"Braking... Speed: {self.speed} km/h")
+        for speed in accelerate_generator():
+            time.sleep(1)
+            self.log_message(f"Accelerating... Speed: {speed} km/h")
 
-    def avoid_obstacle(self):
-        if self.not_running():
-            return
-        if self.speed == 0:
-            print("Car is already stopped.")
-            return
-        print("Obstacle detected. Avoiding the obstacle...")
+    def _increase_speed(self, max_speed: int) -> None:
+        def speed_generator():
+            while self.speed < max_speed:
+                self.speed += 10
+                yield self.speed
+
+        yield from speed_generator()
+
+    def brake(self, duration: int = 2) -> None:
+        def brake_generator():
+            for _ in range(duration):
+                if self.speed > 0:
+                    self.speed -= 10
+                    yield self.speed
+                else:
+                    break
+        for speed in brake_generator():
+            self.log_message(f"Braking... Speed: {speed} km/h")
+            time.sleep(1)
+        time.sleep(1)
+
+    def avoid_obstacle(self) -> None:
+        self.log_message("Obstacle detected. Avoiding the obstacle...")
         time.sleep(1)
         self.brake(1)
         time.sleep(1)
         self.turn()
-        print("Car's speed decreasing to", self.speed)
+        self.log_message(f"Car's speed decreasing to {self.speed}")
 
-    def highway(self):
-        if self.not_running():
-            return
-        if not self.on_the_road:
-            print("Car is not on the road. Please enter a \"drive\" command first.")
-            return
-        if self.on_the_highway:
-            print("Car is already on the highway.")
-            return
-
-        print("Entering the highway...")
+    def highway(self) -> None:
+        self.log_message("Entering the highway...")
+        self.on_the_highway = True
         time.sleep(1)
-        print("Car is on the highway.")
+        self.log_message("Car is on the highway.")
         time.sleep(1)
         self.accelerate(10)
         self.wheel_angle = 0
-        self.on_the_highway = True
 
-    def exit_highway(self):
-        if self.not_running():
-            return
-        if not self.on_the_highway:
-            print("Car is not on the highway.")
-            return
-        print("Exiting the highway...")
+    def exit_highway(self) -> None:
+        self.log_message("Exiting the highway...")
         time.sleep(1)
-        self.brake(9)
-        print("Car is on the road.")
+        self.brake(1)
+        self.log_message("Car is on the road.")
         time.sleep(1)
         self.on_the_highway = False
 
-    def overtake(self):
-        if self.not_running():
-            return
-        if self.not_on_the_road():
-            return
+    def overtake(self) -> None:
         if self.on_the_highway:
-            print("Overtaking... Speed set to 160 km/h.")
-            self.speed = 160
+            self.log_message(f"Overtaking... Speed set to {self.OVERTAKE_SPEED_HIGHWAY} km/h.")
+            self.speed = self.OVERTAKE_SPEED_HIGHWAY
         else:
-            print("Overtaking... Speed set to 70 km/h.")
-            self.speed = 70
+            self.log_message(f"Overtaking... Speed set to {self.OVERTAKE_SPEED_ROAD} km/h.")
+            self.speed = self.OVERTAKE_SPEED_ROAD
 
-    def truck(self):
-        if self.not_running():
-            return
-        if self.not_on_the_road():
-            print("Car is not on the road. Please enter a \"drive\" command first.")
-            return
+    def truck(self) -> None:
         if self.on_the_highway:
-            print("Truck ahead! Slowing down to 100 km/h.")
-            self.speed = 100
+            self.log_message(f"Truck ahead! Slowing down to {self.TRUCK_SPEED_HIGHWAY} km/h.")
+            self.speed = self.TRUCK_SPEED_HIGHWAY
         else:
-            self.speed = 50
-            print("Truck ahead! Slowing down to 50 km/h.")
+            self.log_message(f"Truck ahead! Slowing down to {self.TRUCK_SPEED_ROAD} km/h.")
+            self.speed = self.TRUCK_SPEED_ROAD
 
-    def status(self):
-        print("Car's current status: speed =", self.speed, ", wheel angle =", self.wheel_angle, "°, Engine =",
-              "running" if self.running else "not running")
+    def status(self) -> None:
+        self.log_message(f"Car's current status: speed = {self.speed}, wheel angle = {self.wheel_angle}°")
         if self.on_the_highway:
-            print("Car is on the highway.")
+            self.log_message("Car is on the highway.")
         elif self.on_the_road:
-            print("Car is on the road.")
+            self.log_message("Car is on the road.")
         else:
-            print("Car is not on the road.")
+            self.log_message("Car is not on the road.")
 
-    def stop(self):
-        if self.running is False:
-            print("Car is already stopped.")
-            return
-        if self.on_the_highway:
-            self.exit_highway()
-        print("Stopping the car...")
+    def stop(self) -> None:
+        self.log_message("Stopping the car...")
         time.sleep(1)
-        self.running = False
         self.on_the_road = False
         self.speed = 0
-        print("Car has stopped.")
+        self.log_message("Car has stopped.")
         time.sleep(1)
 
-    def exit(self):
-        print("Exiting the car simulation...")
-        time.sleep(1)
+
+class Car:
+    def __init__(self, environment: Environment) -> None:
+        self.environment = environment
+        self.running = True
+
+    def send_action(self, action: Action) -> None:
+        self.environment.handle_action(action)
+
+    def stop(self) -> None:
         self.running = False
-        self.simulator_running = False
-        print("Car simulation ended.")
-        time.sleep(1)
+
+    def __del__(self) -> None:
+        self.stop()
 
 
-# Rozpoczęcie symulacji
-print("Starting car simulation...")
-time.sleep(1)
-print("Car simulation started.")
-time.sleep(1)
+def action_generator():
+    while True:
+        command = input("Enter a command: ").strip().lower()
+        if command == 'exit':
+            logging.info("Exiting the car simulation...")
+            time.sleep(1)
+            break
+        yield Action(command)
 
-# Główna pętla sterująca samochodem
-car1 = Car()
-while car1.simulator_running:
-    command = input("Enter a command: ").strip().lower()
-    car1.act(command)
 
-print(f"Simulation ended after handling {car1.events_handled} events.")
+def handle_action_in_process(action: Action, car: Car) -> None:
+    car.send_action(action)
+
+
+if __name__ == '__main__':
+    logging.info("Starting car simulation...")
+    time.sleep(1)
+    logging.info("Car simulation started.")
+    time.sleep(1)
+
+    environment = Environment()
+    car1 = Car(environment)
+    car1.running = True
+
+    action_gen = action_generator()
+    with multiprocessing.Pool() as pool:
+        pool.apply_async(car1.send_action, (Action('start the engine'),))
+        for action in action_gen:
+            pool.apply_async(handle_action_in_process, args=(action, car1))
+            if not car1.running:
+                break
+
+    logging.info("Car simulation ended.")
