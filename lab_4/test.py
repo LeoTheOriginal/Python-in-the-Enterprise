@@ -57,5 +57,6 @@ class TestCar(unittest.TestCase):
         self.assertEqual(self.car.wheel_angle, initial_wheel_angle)
         self.assertEqual(self.car.speed, initial_speed)
 
+
 if __name__ == '__main__':
     unittest.main()
