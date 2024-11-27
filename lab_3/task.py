@@ -27,7 +27,7 @@ class Student:
     def get_total_average(self) -> Optional[float]:
         all_scores = [score for scores in self.scores.values() for score in scores]
         if all_scores:
-            return mean(all_scores)
+            return mean(all_scores) #ewentualnie else i zwórć wyjątek
         return None
 
     def __str__(self):
@@ -108,5 +108,3 @@ if __name__ == '__main__':
         print(f"{subject.capitalize()} Average: {highschool.get_class_average(subject):.2f}")
 
     print(f"\nOverall School Average: {highschool.get_school_average():.2f}")
-
-

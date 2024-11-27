@@ -98,6 +98,8 @@ class Account:
         handler.setFormatter(formatter)
         self.logger.addHandler(handler)
         self.logger.propagate = False  # Zapobiega duplikacji logów
+        # można zrobić funkcję poza klasą account którra będzie konfigurowała nam loggera
+        # dla danego uzytkownika i wywołać ją w konstruktorze
 
     @transaction_logger
     def deposit(self, amount):
